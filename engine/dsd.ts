@@ -36,6 +36,7 @@ import type {
     BlockEntry,
     BlockSequence,
     CompositionInput,
+    Reference,
     RenderModel,
     Traceability,
 } from "../types";
@@ -75,6 +76,7 @@ export class DsdEngine {
 
         const blockSequence = this.composeBlockSequence(
             input.document.decisionBlocks,
+            input.document.identifier,
         );
 
         return Object.freeze({
@@ -106,7 +108,7 @@ export class DsdEngine {
             );
         }
 
-        return object;
+        return object as KnowledgeNode;
     }
 
     /**
@@ -140,17 +142,31 @@ export class DsdEngine {
      */
     private composeBlockSequence(
         blockReferences: readonly BlockReference[],
+        documentIdentifier: string,
     ): BlockSequence {
+        const documentReference: Reference<"DecisionSupportDocument"> = {
+            targetType: "DecisionSupportDocument",
+            targetId: documentIdentifier,
+        };
+
         const sequence: BlockEntry[] = blockReferences.map(
             (blockReference) => {
-                this.blockRegistry.get(blockReference.targetId);
+                const definition = this.blockRegistry.get(
+                    blockReference.targetId,
+                );
+
+                const configuration = Object.freeze({
+                    blockReference,
+                    configuration: definition.contract.requiredInput,
+                });
 
                 const traceability: Traceability = Object.freeze({
-                    source: blockReference,
+                    source: documentReference,
                 });
 
                 return Object.freeze({
                     blockReference,
+                    configuration,
                     traceability,
                 });
             },
